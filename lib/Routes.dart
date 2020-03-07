@@ -23,6 +23,7 @@ import 'package:anad_magicar/repository/user/user_repo.dart';
 import 'package:anad_magicar/ui/map/countries.dart';
 import 'package:anad_magicar/ui/map/live/sidebar.dart';
 import 'package:anad_magicar/ui/map/mapbox/main.dart';
+import 'package:anad_magicar/ui/map/mapbox/map_ui.dart';
 import 'package:anad_magicar/ui/map/openmapstreet/pages/home.dart';
 import 'package:anad_magicar/ui/map/openmapstreet/pages/plugin_scalebar.dart';
 import 'package:anad_magicar/ui/screen/AnimatedSplashScreen.dart';
@@ -534,7 +535,7 @@ class _MyAppState extends State<MyApp>
                                               );
                                             case '/mappage':
                                               return new MyCustomRoute(
-                                                builder: (_) => new MapPage(mapVM: settings.arguments,),
+                                                builder: (_) => new MapPage(mapVM: settings.arguments,), //MapUiPage(mapVM: settings.arguments,),
                                                 settings: settings,
                                               );
                                             case '/fingerprint':

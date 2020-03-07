@@ -58,6 +58,8 @@ import 'package:flutter/material.dart';
 import "package:collection/collection.dart";
 import 'package:anad_magicar/widgets/persian_datepicker/persian_datepicker.dart';
 import 'package:flutter/services.dart';
+import 'package:geolocation/geolocation.dart' as geo;
+
 final List<String> carImgList = [
   "assets/images/car_red.png",
   "assets/images/car_blue.png",
@@ -66,6 +68,24 @@ final List<String> carImgList = [
   "assets/images/car_yellow.png",
   "assets/images/car_gray.png",
 ];
+
+class LocationDataGeo {
+  LocationDataGeo({
+    @required this.id,
+    this.result,
+    @required this.origin,
+    @required this.color,
+    @required this.createdAtTimestamp,
+    this.elapsedTimeSeconds,
+  });
+
+  final int id;
+  final geo.LocationResult result;
+  final String origin;
+  final Color color;
+  final int createdAtTimestamp;
+  final int elapsedTimeSeconds;
+}
 
 class MapPage extends StatefulWidget {
 
@@ -94,6 +114,11 @@ class MapPage extends StatefulWidget {
 
 class MapPageState extends State<MapPage> {
   static const String route = '/mappage';
+
+
+
+  List<LocationDataGeo> _locations = [];
+  List<StreamSubscription<dynamic>> _subscriptions = [];
   static final String MINMAX_SPEED_TAG='MINMAX_SPEED';
   static final String MIN_SPEED_TAG='MIN_SPEED';
   static final String MAX_SPEED_TAG='MAX_SPEED';
@@ -109,6 +134,7 @@ class MapPageState extends State<MapPage> {
   bool isGPSOn=false;
   bool isGPRSOn=false;
   bool showAllItemsOnMap=true;
+  bool showSattelite=false;
   final TextEditingController textEditingController = TextEditingController();
   String fromDate='';
   String toDate='';
@@ -834,7 +860,7 @@ class MapPageState extends State<MapPage> {
 
           final color = Color(
               (math.Random().nextDouble() * 0xFFFFFF).toInt() << 0)
-              .withOpacity(0.5);
+              .withOpacity(0.6);
           lines.add(Polyline(
               strokeWidth: 12.0,
               color: color,
@@ -1693,9 +1719,9 @@ class MapPageState extends State<MapPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: <Widget>[
-                      Text('اگر تاریخ را انتخاب نکنید بصورت پیش فرض روز جاری در نظر گرفته میشود')
+                      Text('اگر تاریخ را انتخاب نکنید بصورت پیش فرض روز جاری در نظر گرفته میشود',style:TextStyle(fontSize: 11.0))
                       ]
                   ),
                   Row(
@@ -2020,10 +2046,90 @@ class MapPageState extends State<MapPage> {
     pairedChangedNoty.dispose();
     markerlocationStream.close();
     animateNoty.dispose();
-    _timer.cancel();
+   // _timer.cancel();
     _timerLine.cancel();
 
     super.dispose();
+  }
+
+
+
+  _onLastKnownPressed() async {
+    final int id = _createLocation('last known', Colors.blueGrey);
+    geo.LocationResult result = await geo.Geolocation.lastKnownLocation();
+    if (mounted) {
+      _updateLocation(id, result);
+    }
+  }
+
+  _onCurrentPressed() {
+    final int id = _createLocation('current', Colors.lightGreen);
+    _listenToLocation(
+        id, geo.Geolocation.currentLocation(accuracy: geo.LocationAccuracy.best));
+
+  }
+
+  _onSingleUpdatePressed() async {
+    final int id = _createLocation('update', Colors.deepOrange);
+    _listenToLocation(
+        id, geo.Geolocation.singleLocationUpdate(accuracy: geo.LocationAccuracy.best));
+  }
+
+  _listenToLocation(int id, Stream<geo.LocationResult> stream) {
+    final subscription = stream.listen((result) {
+      _updateLocation(id, result);
+    });
+
+    subscription.onDone(() {
+      _subscriptions.remove(subscription);
+    });
+
+    _subscriptions.add(subscription);
+  }
+
+  int _createLocation(String origin, Color color) {
+    final int lastId = _locations.isNotEmpty
+        ? _locations.map((location) => location.id).reduce(math.max)
+        : 0;
+    final int newId = lastId + 1;
+
+    setState(() {
+      _locations.insert(
+        0,
+        new LocationDataGeo(
+          id: newId,
+          result: null,
+          origin: origin,
+          color: color,
+          createdAtTimestamp: new DateTime.now().millisecondsSinceEpoch,
+          elapsedTimeSeconds: null,
+        ),
+      );
+    });
+
+    return newId;
+  }
+
+  _updateLocation(int id, geo.LocationResult result) {
+    final int index = _locations.indexWhere((location) => location.id == id);
+    assert(index != -1);
+
+    final LocationDataGeo location = _locations[index];
+
+    setState(() {
+      _locations[index] = new LocationDataGeo(
+        id: location.id,
+        result: result,
+        origin: location.origin,
+        color: location.color,
+        createdAtTimestamp: location.createdAtTimestamp,
+        elapsedTimeSeconds: (new DateTime.now().millisecondsSinceEpoch -
+            location.createdAtTimestamp) ~/
+            1000,
+      );
+    });
+    if( location.result.isSuccessful)
+      liveMapController.mapController.move(new LatLng( location.result.locations[0].latitude, location.result.locations[0].latitude), 15);
   }
 
   @override
@@ -2040,13 +2146,15 @@ class MapPageState extends State<MapPage> {
         onLocationUpdate: (LatLng pos) {
           print("onLocationUpdate ${pos.toString()}");
          // mapController.move(pos, 17.0);
+          liveMapController.mapController.move(pos, 14);
         },
-        updateMapLocationOnPositionChange: true,
+        updateMapLocationOnPositionChange: false,
         showMoveToCurrentLocationFloatingActionButton: true,
         zoomToCurrentLocationOnLoad: true,
+        //showHeading: true,
         fabBottom: 160,
         fabRight: 20,
-        verbose: false);
+        verbose: true);
     return StreamBuilder<Message>(
       //initialData: new Message(t),
       stream: pairedChangedNoty.noty,
@@ -2272,18 +2380,40 @@ class MapPageState extends State<MapPage> {
                                                                       ),
 
                                                                       layers: [
+                                                                        showSattelite ?  TileLayerOptions(
+
+                                                                          //urlTemplate: 'https://{s}.tiles.mapbox.com/v3/pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdnB2dDAwdGwzZnMwc2lhcTlxd3QifQ.61hONdUooWn7aBJs-Km8OA/{z}/{x}/{y}.png',
+                                                                          // urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                                                          //urlTemplate:'https://api.mapbox.com/styles/v1/rezand/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
+
+                                                                           urlTemplate:'https://api.mapbox.com/styles/v1/rezand/ck7d3ul4c0k3w1ir0n2a419pd/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
+                                                                          additionalOptions: {
+                                                                            'accessToken':
+                                                                            'pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
+                                                                            //'id': 'mapbox.mapbox-streets-v7'
+                                                                          },
+                                                                          subdomains: [
+                                                                            'a',
+                                                                            'b',
+                                                                            'c',
+                                                                            'd'
+                                                                          ],
+
+                                                                        ) :
                                                                         TileLayerOptions(
-                                                                         tms: true,
-                                                                          urlTemplate:
-                                                                          'http://tileserver.maptiler.com/nasa/{z}/{x}/{y}.png',
-                                                                         /* 'https://{s}.tile.openstreetmap.org?layers=H&{z}/{x}/{y}.png',
+                                                                          //urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                                                          urlTemplate:'https://api.mapbox.com/styles/v1/rezand/ck7ge41221jke1inrbezkflve/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
+                                                                          additionalOptions: {
+                                                                            'accessToken':
+                                                                            'pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
+                                                                            'id': 'mapbox.mapbox-streets-v7'
+                                                                          },
                                                                           subdomains: [
                                                                             'a',
                                                                             'b',
                                                                             'c'
-                                                                          ],*/
-                                                                          // NetworkTileProvider or CachedNetworkTileProvider
-                                                                          tileProvider: CachedNetworkTileProvider(),
+                                                                          ],
+                                                                          //additionalOptions: {'key':'2UnTxClTTOQ2d3xsUL5T'},
                                                                         ),
 
                                                                         (forAnim &&
@@ -2302,10 +2432,41 @@ class MapPageState extends State<MapPage> {
                                                                         userLocationOptions,
                                                                       ],
                                                                     ),
-
+                                                                showAllItemsOnMap ?    Positioned(
+                                                                      right: 20.0,
+                                                                      bottom: 360.0,
+                                                                      child:
+                                                                      Container(
+                                                                        width: 38.0,
+                                                                        height: 38.0,
+                                                                        child:
+                                                                        FloatingActionButton(
+                                                                          onPressed: () {
+                                                                            showSattelite =
+                                                                            !showSattelite;
+                                                                            showAllItemsdNoty
+                                                                                .updateValue(
+                                                                                new Message(
+                                                                                    type: 'SATTELITE'));
+                                                                          },
+                                                                          child: Container(
+                                                                            width: 38.0,
+                                                                            height: 38.0,
+                                                                            child: Image
+                                                                                .asset(
+                                                                              'assets/images/sattelite.png',
+                                                                              color: showAllItemsOnMap ? Colors
+                                                                                  .white : Colors.amber,),),
+                                                                          elevation: 0.0,
+                                                                          backgroundColor: Colors
+                                                                              .blueAccent,
+                                                                          heroTag: 'SATTELITE1',
+                                                                        ),
+                                                                      ),
+                                                                    ) : Container(),
                                                                     Positioned(
                                                                       right: 20.0,
-                                                                      bottom: 310.0,
+                                                                      bottom: 210.0,
                                                                       child:
                                                                       Container(
                                                                         width: 38.0,
@@ -2331,14 +2492,14 @@ class MapPageState extends State<MapPage> {
                                                                           elevation: 0.0,
                                                                           backgroundColor: Colors
                                                                               .blueAccent,
-                                                                          heroTag: 'CLEARALL',
+                                                                          heroTag: 'CLEARALL1',
                                                                         ),
                                                                       ),
                                                                     ),
                                                                     showAllItemsOnMap
                                                                         ? Positioned(
                                                                       right: 20.0,
-                                                                      bottom: 260.0,
+                                                                      bottom: 310.0,
                                                                       child:
                                                                       Container(
                                                                         width: 38.0,
@@ -2370,7 +2531,7 @@ class MapPageState extends State<MapPage> {
                                                                     showAllItemsOnMap
                                                                         ? Positioned(
                                                                       right: 20.0,
-                                                                      bottom: 210.0,
+                                                                      bottom: 260.0,
                                                                       child:
                                                                       Container(
                                                                         width: 38.0,
@@ -2398,7 +2559,7 @@ class MapPageState extends State<MapPage> {
                                                                         : Container(),
                                                                     showAllItemsOnMap
                                                                         ? Positioned(
-                                                                      left: 20.0,
+                                                                      left: 10.0,
                                                                       top: 60.0,
                                                                       child:
                                                                       Container(
@@ -2427,14 +2588,14 @@ class MapPageState extends State<MapPage> {
                                                                           elevation: 1.0,
                                                                           backgroundColor: Colors
                                                                               .transparent,
-                                                                          heroTag: 'GPS',
+                                                                          heroTag: 'GPS1',
                                                                         ),
                                                                       ),
                                                                     )
                                                                         : Container(),
                                                                     showAllItemsOnMap
                                                                         ? Positioned(
-                                                                      left: 80.0,
+                                                                      left: 60.0,
                                                                       top: 60.0,
                                                                       child:
                                                                       Container(
@@ -2463,7 +2624,7 @@ class MapPageState extends State<MapPage> {
                                                                           elevation: 1.0,
                                                                           backgroundColor: Colors
                                                                               .transparent,
-                                                                          heroTag: 'GPRS',
+                                                                          heroTag: 'GPRS1',
                                                                         ),
                                                                       ),
                                                                     )
@@ -2560,30 +2721,43 @@ class MapPageState extends State<MapPage> {
 
                                                             ),
                                                             layers: [
-                                                              TileLayerOptions(
 
-                                                                urlTemplate: 'https://api.maptiler.com/maps/hybrid/?key=2UnTxClTTOQ2d3xsUL5T#0.62/0/0',
+                                                              showSattelite ?  TileLayerOptions(
+
+                                                                //urlTemplate: 'https://{s}.tiles.mapbox.com/v3/pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdnB2dDAwdGwzZnMwc2lhcTlxd3QifQ.61hONdUooWn7aBJs-Km8OA/{z}/{x}/{y}.png',
+                                                                // urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                                                //urlTemplate:'https://api.mapbox.com/styles/v1/rezand/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
+
+                                                                urlTemplate:'https://api.mapbox.com/styles/v1/rezand/ck7d3ul4c0k3w1ir0n2a419pd/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
+                                                                additionalOptions: {
+                                                                  'accessToken':
+                                                                  'pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
+                                                                  //'id': 'mapbox.mapbox-streets-v7'
+                                                                },
+                                                                subdomains: [
+                                                                  'a',
+                                                                  'b',
+                                                                  'c',
+                                                                  'd'
+                                                                ],
+
+                                                              ) :
+                                                              TileLayerOptions(
+                                                                //urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                                                urlTemplate:'https://api.mapbox.com/styles/v1/rezand/ck7ge41221jke1inrbezkflve/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
+                                                                additionalOptions: {
+                                                                  'accessToken':
+                                                                  'pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
+                                                                  'id': 'mapbox.mapbox-streets-v7'
+                                                                },
+                                                                subdomains: [
+                                                                  'a',
+                                                                  'b',
+                                                                  'c'
+                                                                ],
                                                                 //additionalOptions: {'key':'2UnTxClTTOQ2d3xsUL5T'},
                                                               ),
-                                                                /*'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                                                subdomains: [
-                                                                  'a',
-                                                                  'b',
-                                                                  'c'
-                                                                ],
-                                                                additionalOptions: {
-                                                                  "tileLayerJSON":'http://tileserver.maptiler.com/swissimage25m.json',
-                                                                },
-                                                                //tileProvider: NetworkTileProvider(),
-                                                              ),
-                                                              TileLayerOptions (
-                                                                urlTemplate: 'http://tileserver.maptiler.com/grandcanyon/{z}/{x}/{y}.png',
-                                                                subdomains: [
-                                                                  'a',
-                                                                  'b',
-                                                                  'c'
-                                                                ],
-                                                              ),*/
+
                                                               (forAnim &&
                                                                   _polyLineAnim !=
                                                                       null)
@@ -2606,9 +2780,43 @@ class MapPageState extends State<MapPage> {
                                                             mapController: liveMapController
                                                                 .mapController,
                                                           ),
+
+                                                          showAllItemsOnMap ?  Positioned(
+                                                            right: 20.0,
+                                                            bottom: 360.0,
+                                                            child:
+                                                            Container(
+                                                              width: 38.0,
+                                                              height: 38.0,
+                                                              child:
+                                                              FloatingActionButton(
+                                                                onPressed: () {
+                                                                  showSattelite =
+                                                                  !showSattelite;
+                                                                  showAllItemsdNoty
+                                                                      .updateValue(
+                                                                      new Message(
+                                                                          type: 'SATTELITE'));
+                                                                },
+                                                                child: Container(
+                                                                  width: 38.0,
+                                                                  height: 38.0,
+                                                                  child: Image
+                                                                      .asset(
+                                                                    'assets/images/sattelite.png',
+                                                                    color: showAllItemsOnMap ? Colors
+                                                                        .white : Colors.amber,),),
+                                                                elevation: 0.0,
+                                                                backgroundColor: Colors
+                                                                    .blueAccent,
+                                                                heroTag: 'SATTELITE2',
+                                                              ),
+                                                            ),
+                                                          ) : Container(),
+
                                                           Positioned(
                                                             right: 20.0,
-                                                            bottom: 310.0,
+                                                            bottom: 210.0,
                                                             child:
                                                             Container(
                                                               width: 38.0,
@@ -2634,14 +2842,14 @@ class MapPageState extends State<MapPage> {
                                                                 elevation: 0.0,
                                                                 backgroundColor: Colors
                                                                     .blueAccent,
-                                                                heroTag: 'CLEARALL',
+                                                                heroTag: 'CLEARALL2',
                                                               ),
                                                             ),
                                                           ),
                                                           showAllItemsOnMap
                                                               ? Positioned(
                                                             right: 20.0,
-                                                            bottom: 260.0,
+                                                            bottom: 310.0,
                                                             child:
                                                             Container(
                                                               width: 38.0,
@@ -2674,7 +2882,7 @@ class MapPageState extends State<MapPage> {
                                                           showAllItemsOnMap
                                                               ? Positioned(
                                                             right: 20.0,
-                                                            bottom: 210.0,
+                                                            bottom: 260.0,
                                                             child:
                                                             Container(
                                                                 width: 38.0,
@@ -2702,7 +2910,7 @@ class MapPageState extends State<MapPage> {
                                                               : Container(),
                                                           showAllItemsOnMap
                                                               ? Positioned(
-                                                            left: 20.0,
+                                                            left: 10.0,
                                                             top: 60.0,
                                                             child:
                                                             Container(
@@ -2730,14 +2938,14 @@ class MapPageState extends State<MapPage> {
                                                                 elevation: 1.0,
                                                                 backgroundColor: Colors
                                                                     .transparent,
-                                                                heroTag: 'GPS',
+                                                                heroTag: 'GPS2',
                                                               ),
                                                             ),
                                                           )
                                                               : Container(),
                                                           showAllItemsOnMap
                                                               ? Positioned(
-                                                            left: 80.0,
+                                                            left: 60.0,
                                                             top: 60.0,
                                                             child:
                                                             Container(
@@ -2766,7 +2974,7 @@ class MapPageState extends State<MapPage> {
                                                                 elevation: 1.0,
                                                                 backgroundColor: Colors
                                                                     .transparent,
-                                                                heroTag: 'GPRS',
+                                                                heroTag: 'GPRS2',
                                                               ),
                                                             ),
                                                           )

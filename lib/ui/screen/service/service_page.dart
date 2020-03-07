@@ -29,7 +29,7 @@ class ServicePage extends StatefulWidget {
   }
 }
 
-class ServicePageState extends State<ServicePage> {
+class ServicePageState extends State<ServicePage>  with AutomaticKeepAliveClientMixin{
 
 
   String serviceDate='';
@@ -94,17 +94,23 @@ class ServicePageState extends State<ServicePage> {
                   StreamBuilder<Message>(
                     stream: widget.filterNoty.noty,
                     builder: (context,snapshot){
-                      if(snapshot.hasData && snapshot.data!=null){
-                        centerRepository.dismissDialog(context);
-                        int stid=snapshot.data.index;
-                        finalServices=newServices.where((s)=>s.ServiceTypeId==stid).toList();
+                      if(snapshot.hasData && snapshot.data!=null) {
+                        if (snapshot.data.type == 'REFRESH') {
+                          fServices=loadCarServices(widget.serviceVM.carId);
+                        } else {
+                          centerRepository.dismissDialog(context);
+                          int stid = snapshot.data.index;
+                          finalServices =
+                              newServices.where((s) => s.ServiceTypeId == stid)
+                                  .toList();
+                        }
                       }else{
                         finalServices=newServices;
                       }
                       if(finalServices!=null && finalServices.length>0) {
                         finalServices.sort((ApiService a, ApiService b) {
-                          String s1 = a.ServiceDate.replaceAll('/', '');
-                          String s2 = b.ServiceDate.replaceAll('/', '');
+                          String s1 = a.ServiceDate!=null ?  a.ServiceDate.replaceAll('/', '') : '0';
+                          String s2 = b.ServiceDate!=null ? b.ServiceDate.replaceAll('/', '') : '0';
                           return int.tryParse(s2).compareTo(int.tryParse(s1));
                         });
                       }
@@ -124,4 +130,8 @@ class ServicePageState extends State<ServicePage> {
         }
     );
   }
+
+  @override
+  // TODO: implement wantKeepAlive
+  bool get wantKeepAlive => true;
 }

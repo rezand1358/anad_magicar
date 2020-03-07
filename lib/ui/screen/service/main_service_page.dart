@@ -31,11 +31,13 @@ class MainPageService extends StatefulWidget {
   }
 }
 
-class MainPageServiceState extends MainPage<MainPageService> {
+class MainPageServiceState extends MainPage<MainPageService>  with SingleTickerProviderStateMixin{
 
   static final String route='/servicepage';
+  TabController tabController;
   ServiceType _valueCarServiceType;
   String tTtile='';
+  bool serviceIndexChanged=false;
   NotyBloc<Message> filterNoty;
   List<ServiceType> serviceTypes=new List();
   Future<List<ApiService>> loadCarServices(int carId,int stId) async {
@@ -63,6 +65,11 @@ class MainPageServiceState extends MainPage<MainPageService> {
     }
   }
 
+  void _handleSelected() {
+    setState(() {
+      serviceIndexChanged = true;
+    });
+  }
   addService()  {
     loadServiceTypes();
     if(centerRepository.getServiceTypes()==null || centerRepository.getServiceTypes().length==0){
@@ -146,6 +153,7 @@ class MainPageServiceState extends MainPage<MainPageService> {
 
   @override
   void dispose() {
+    tabController.dispose();
     super.dispose();
   }
 
@@ -154,6 +162,12 @@ class MainPageServiceState extends MainPage<MainPageService> {
   List<Widget> actionIcons() {
     // TODO: implement actionIcons
     List<Widget> actions=[
+      IconButton(
+        icon: Icon(Icons.refresh,color: Colors.white,),
+        onPressed: (){
+          filterNoty.updateValue(new Message(type: 'REFRESH'));
+        },
+      ),
       IconButton(
         icon: Icon(Icons.filter_list,color: Colors.indigoAccent,),
         onPressed: (){
@@ -199,6 +213,9 @@ class MainPageServiceState extends MainPage<MainPageService> {
   @override
   initialize() {
     // TODO: implement initialize
+   // tabController=TabController(vsync: this, length: 2);
+
+
     filterNoty=new NotyBloc<Message>();
     loadServiceTypes();
     return null;
@@ -209,7 +226,14 @@ class MainPageServiceState extends MainPage<MainPageService> {
     // TODO: implement pageContent
     return new MainPersistentTabBar(
 
+     // tabController: tabController,
       actions: <Widget> [
+        IconButton(
+          icon: Icon(Icons.refresh,color: Colors.white,),
+          onPressed: (){
+            filterNoty.updateValue(new Message(type: 'REFRESH'));
+          },
+        ),
         IconButton(
           icon: Icon(Icons.filter_list,color: Colors.white,),
           onPressed: (){

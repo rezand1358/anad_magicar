@@ -1,4 +1,3 @@
-/*
 // Copyright 2018 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -6,7 +5,10 @@
 import 'package:flutter/material.dart';
 import 'package:location/location.dart';
 
+
+
 import 'animate_camera.dart';
+import 'full_map.dart';
 import 'line.dart';
 import 'map_ui.dart';
 import 'move_camera.dart';
@@ -17,6 +19,7 @@ import 'scrolling_map.dart';
 
 final List<Page> _allPages = <Page>[
   MapUiPage(),
+  FullMapPage(),
   AnimateCameraPage(),
   MoveCameraPage(),
   PlaceSymbolPage(),
@@ -26,10 +29,12 @@ final List<Page> _allPages = <Page>[
 ];
 
 class MapsDemo extends StatelessWidget {
+
+ static PermissionStatus hasPermissions;
   void _pushPage(BuildContext context, Page page) async {
     final location = Location();
-    final hasPermissions = await location.hasPermission();
-    if (!hasPermissions) {
+     hasPermissions = await location.hasPermission();
+    if (hasPermissions==PermissionStatus.DENIED) {
       await location.requestPermission();
     }
 
@@ -59,4 +64,3 @@ class MapsDemo extends StatelessWidget {
 void main() {
   runApp(MaterialApp(home: MapsDemo()));
 }
-*/

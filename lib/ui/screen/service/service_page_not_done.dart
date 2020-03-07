@@ -31,7 +31,7 @@ class ServicePageNotDone extends StatefulWidget {
   }
 }
 
-class ServicePageNotDoneState extends State<ServicePageNotDone> {
+class ServicePageNotDoneState extends State<ServicePageNotDone> with AutomaticKeepAliveClientMixin {
 
   static final String route='/servicepage';
   String serviceDate='';
@@ -107,16 +107,21 @@ class ServicePageNotDoneState extends State<ServicePageNotDone> {
                   stream: widget.filterNoty.noty,
                   builder: (context,snapshot){
                     if(snapshot.hasData && snapshot.data!=null){
+
+                      if (snapshot.data.type == 'REFRESH') {
+                        fServices=loadCarServices(widget.serviceVM.carId);
+                      } else {
                       centerRepository.dismissDialog(context);
                       int stid=snapshot.data.index;
                       finalServices=newServices.where((s)=>s.ServiceTypeId==stid).toList();
-                    }else{
+                    }
+                    } else{
                       finalServices=newServices;
                     }
                     if(finalServices!=null && finalServices.length>0) {
                       finalServices.sort((ApiService a, ApiService b) {
-                        String s1 = a.ServiceDate.replaceAll('/', '');
-                        String s2 = b.ServiceDate.replaceAll('/', '');
+                        String s1 =a.ServiceDate!=null ? a.ServiceDate.replaceAll('/', '') : '0';
+                        String s2 =b.ServiceDate!=null ?  b.ServiceDate.replaceAll('/', '') : '0';
                         return int.tryParse(s2).compareTo(int.tryParse(s1));
                       });
                     }
@@ -136,4 +141,8 @@ class ServicePageNotDoneState extends State<ServicePageNotDone> {
         }
     );
   }
+
+  @override
+  // TODO: implement wantKeepAlive
+  bool get wantKeepAlive => true;
 }
