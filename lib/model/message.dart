@@ -4,7 +4,8 @@ class Message {
    String text;
    String type;
    int index;
+   int id;
    CarStateVM currentCarState;
   bool status=false;
-  Message({this.text, this.type,this.status,this.index,this.currentCarState});
+  Message({this.text, this.type,this.status,this.index,this.currentCarState,this.id});
 }

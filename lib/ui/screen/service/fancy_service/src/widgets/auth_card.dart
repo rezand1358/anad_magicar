@@ -898,6 +898,11 @@ class _CarCardState extends State<_CarCard> with TickerProviderStateMixin {
 
   Widget _buildDistanceField(double width, CarServiceMessages messages) {
     final auth = Provider.of<Auth>(context);
+
+    bool isEdit=(widget.editMode!=null && widget.editMode);
+     if(isEdit!=null && isEdit){
+
+     }
     return AnimatedTextFormField(
 
       enableInteractiveSelection: true,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:anad_magicar/bloc/theme/change_theme_bloc.dart';
 import 'package:anad_magicar/bloc/values/notify_value.dart';
@@ -123,6 +124,7 @@ class MapPageState extends State<MapPage> {
   static final String MIN_SPEED_TAG='MIN_SPEED';
   static final String MAX_SPEED_TAG='MAX_SPEED';
   String userName='';
+  int periodicTimePosition=1;
   int userId=0;
   int minSpeed=30;
   int maxSpeed=100;
@@ -176,6 +178,10 @@ class MapPageState extends State<MapPage> {
   var location = new Location();
 
   List<Marker> markers = [];
+  Map<int,LatLng> carInMarkerMap=new Map();
+  Map<int,int> carIndexMarkerMap=new Map();
+  Map<int,Marker> carMarkersMap=new Map();
+
   List<LatLng> points=[];
   StreamController<LatLng> markerlocationStream = StreamController();
   UserLocationOptions userLocationOptions;
@@ -188,7 +194,7 @@ class MapPageState extends State<MapPage> {
   LiveMapController liveMapController;
 
   Marker _marker;
-  Timer _timer;
+  Timer _timerupdate;
   int _markerIndex = 0;
   Polyline _polyLine;
   Polyline _polyLineAnim;
@@ -227,10 +233,10 @@ class MapPageState extends State<MapPage> {
        else*/ return
    Image.asset( markerGreen  , color: Colors.amber,key: ObjectKey(Colors.amber ),) ;
   }
-  getMinMaxSpeed() async {
-    /*maxSpeed=await prefRepository.getMinMaxSpeed(SettingsScreenState.MAX_SPEED_TAG);
-    minSpeed=await prefRepository.getMinMaxSpeed(SettingsScreenState.MIN_SPEED_TAG);*/
-
+  getPeriodicTimePosition() async {
+    periodicTimePosition=await prefRepository.getPeriodicTime(SettingsScreenState.PERIODIC_TIME_TAG);
+    if(periodicTimePosition==null)
+      periodicTimePosition=1;
   }
 
   getAppTheme() async{
@@ -245,12 +251,7 @@ class MapPageState extends State<MapPage> {
   }
 
   animateRoutecar() async {
-    _timer = Timer.periodic(Duration(seconds: 1), (_) {
 
-        _marker = markers[_markerIndex];
-        _markerIndex = (_markerIndex + 1) % markers.length;
-       // animateNoty.updateValue(new Message(type: 'MARKER_ANIM'));
-    });
   }
 
   animateRoutecarPolyLines() async {
@@ -302,6 +303,13 @@ class MapPageState extends State<MapPage> {
     carIdForSearch=value.toString();
   }
 
+  _updateLastPositionCarPeriodically(int index,int carId,bool isCarPaired) async{
+    int updateTime=periodicTimePosition * 60 * 1000;
+    _timerupdate = Timer.periodic(Duration(milliseconds: updateTime), (_){
+      navigateToCarSelected(index, isCarPaired, carId,true);
+  });
+
+}
   _deleteCarFromPaired(int masterId,int  secondCar,) async{
     // var result=await restDatasource.savePairedCar(car);
     List<int> carIds=[secondCar];
@@ -377,7 +385,7 @@ class MapPageState extends State<MapPage> {
           child :Button(clr: Colors.pinkAccent,wid:150.0,title: Translations.current.navigateToCurrent(),),
           onTap: (){
             Navigator.pop(context);
-            navigateToCarSelected(0,true, car.CarId);
+            navigateToCarSelected(0,true, car.CarId,true);
           },),
 
 
@@ -1109,7 +1117,7 @@ class MapPageState extends State<MapPage> {
 
 
     getUserId();
-    //getMinMaxSpeed();
+    getPeriodicTimePosition();
     location = new Location();
     mapController=new MapController();
     reportNoty=new NotyBloc<Message>();
@@ -1413,7 +1421,45 @@ class MapPageState extends State<MapPage> {
       FlashHelper.informationBar2(context,title: null, message:'اطلاعاتی برای نمایش یافت نشد',);
     }
   }
-  Future<ApiRoute> navigateToCarSelected(int index,bool isCarPaired,int carId) async{
+
+
+  updateMarkerPosition(int carId,Marker newMarker,LatLng latLng){
+
+
+
+    if(carMarkersMap.containsKey(lastCarIdSelected)){
+      Marker mark=carMarkersMap[carId];
+      if(markers!=null && markers.length>0){
+        int markerIndex=markers.indexWhere((m)=>m==mark);
+        if(markerIndex!=null && markerIndex>-1){
+          if(latLng!=mark.point)
+            markers[markerIndex]=newMarker;
+        }
+      }
+
+      carMarkersMap.update(lastCarIdSelected, (value)=>newMarker);
+      if(latLng!=mark.point)
+        statusNoty.updateValue(new Message(type: 'GPS_GPRS_UPDATE',
+            index: carId,
+            id: carId,
+            status: false));
+    }else{
+      carMarkersMap.putIfAbsent(lastCarIdSelected, ()=>newMarker);
+      statusNoty.updateValue(new Message(type: 'GPS_GPRS_UPDATE',
+          index: carId,
+          id: carId,
+          status: false));
+    }
+    if(carInMarkerMap.containsKey(lastCarIdSelected)){
+      carInMarkerMap.update(lastCarIdSelected,(value)=>latLng);
+    }else{
+      carInMarkerMap.putIfAbsent(lastCarIdSelected, ()=>latLng);
+    }
+
+
+  }
+
+  Future<ApiRoute> navigateToCarSelected(int index,bool isCarPaired,int carId,bool route) async{
 
     String imgUrl='';
     CarInfoVM carInfo;
@@ -1500,10 +1546,12 @@ class MapPageState extends State<MapPage> {
         double lng=sresultLatLng;
         LatLng latLng=LatLng(lat,lng);
         currentCarLatLng=LatLng(lat,lng);
-        liveMapController.mapController.move(latLng, 14);
+        if(route)
+          liveMapController.mapController.move(latLng, 14);
       var marker=  Marker(
           width: 40.0,
           height: 40.0,
+
           point: latLng,
           builder: (ctx) => Container (
             child : GestureDetector(
@@ -1523,14 +1571,38 @@ class MapPageState extends State<MapPage> {
         );
 
         markers.add(marker);
-        statusNoty.updateValue(new Message(type: 'GPS_GPRS_UPDATE'));
+        if(carIndexMarkerMap==null)
+          carIndexMarkerMap=new Map();
+        if(carInMarkerMap==null)
+          carInMarkerMap=new Map();
+        if(carMarkersMap==null){
+          carMarkersMap=new Map();
+        }
+
+
+        if(route){
+         updateMarkerPosition(lastCarIdSelected, marker,latLng);
+        }else{
+          carMarkersMap.putIfAbsent(lastCarIdSelected, ()=>marker);
+          carInMarkerMap.putIfAbsent(lastCarIdSelected, ()=>latLng);
+        }
+        //carIndexMarkerMap.putIfAbsent(index, ()=>)
+        if(!route) {
+
+          statusNoty.updateValue(new Message(type: 'GPS_GPRS_UPDATE',
+              index: index,
+              id: carId,
+              status: isCarPaired));
+          _updateLastPositionCarPeriodically(index, lastCarIdSelected, isCarPaired);
+        }
       }else {
       double lat = 35.796249;
       double lng = 51.427583 ;
 
       LatLng latLng=LatLng(lat,lng);
       currentCarLatLng=LatLng(lat,lng);
-      liveMapController.mapController.move(latLng, 14);
+      if(route)
+        liveMapController.mapController.move(latLng, 14);
       var marker=  Marker(
 
         width: 40.0,
@@ -1539,10 +1611,8 @@ class MapPageState extends State<MapPage> {
         builder: (ctx) => Container (
           child : GestureDetector(
           onTap: ()async {
-
               _showInfoPopUp=true;
               _showInfoDialog(lastCarIdSelected);
-
           },
           child:
             Container(
@@ -1557,7 +1627,20 @@ class MapPageState extends State<MapPage> {
       );
 
       markers.add(marker);
-      statusNoty.updateValue(new Message(type: 'GPS_GPRS_UPDATE'));
+      if(route){
+        updateMarkerPosition(lastCarIdSelected, marker,latLng);
+      }else{
+        carMarkersMap.putIfAbsent(lastCarIdSelected, ()=>marker);
+        carInMarkerMap.putIfAbsent(lastCarIdSelected, ()=>latLng);
+      }
+      if(!route) {
+        statusNoty.updateValue(new Message(type: 'GPS_GPRS_UPDATE',
+            index: index,
+            id: carId,
+            status: isCarPaired));
+        _updateLastPositionCarPeriodically(index, lastCarIdSelected, isCarPaired);
+
+      }
     }
   }
 
@@ -2043,6 +2126,7 @@ class MapPageState extends State<MapPage> {
 
   @override
   void dispose() {
+    statusNoty.dispose();
     pairedChangedNoty.dispose();
     markerlocationStream.close();
     animateNoty.dispose();
@@ -2146,7 +2230,7 @@ class MapPageState extends State<MapPage> {
         onLocationUpdate: (LatLng pos) {
           print("onLocationUpdate ${pos.toString()}");
          // mapController.move(pos, 17.0);
-          liveMapController.mapController.move(pos, 14);
+         // liveMapController.mapController.move(pos, 14);
         },
         updateMapLocationOnPositionChange: false,
         showMoveToCurrentLocationFloatingActionButton: true,
@@ -2336,7 +2420,9 @@ class MapPageState extends State<MapPage> {
                                               builder: (context, snapshot) {
                                                 if (snapshot.hasData &&
                                                     snapshot.data != null) {
-              }
+                                                  if(snapshot.data.type=='GPS_GPRS_UPDATE'){
+                                                  }
+                                                }
                                                       return
                                                         Padding(
                                                           padding: EdgeInsets
@@ -2387,7 +2473,7 @@ class MapPageState extends State<MapPage> {
                                                                           //urlTemplate:'https://api.mapbox.com/styles/v1/rezand/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
 
                                                                            urlTemplate:'https://api.mapbox.com/styles/v1/rezand/ck7d3ul4c0k3w1ir0n2a419pd/tiles/256/{z}/{x}/{y}@2x?access_token=pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
-                                                                          additionalOptions: {
+                                                                           additionalOptions: {
                                                                             'accessToken':
                                                                             'pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
                                                                             //'id': 'mapbox.mapbox-streets-v7'
@@ -2455,7 +2541,7 @@ class MapPageState extends State<MapPage> {
                                                                             child: Image
                                                                                 .asset(
                                                                               'assets/images/sattelite.png',
-                                                                              color: showAllItemsOnMap ? Colors
+                                                                              color: !showSattelite ? Colors
                                                                                   .white : Colors.amber,),),
                                                                           elevation: 0.0,
                                                                           backgroundColor: Colors
@@ -2701,7 +2787,8 @@ class MapPageState extends State<MapPage> {
                                             builder: (context, snapshot) {
                                               if (snapshot.hasData &&
                                                   snapshot.data != null) {
-
+                                                if(snapshot.data.type=='GPS_GPRS_UPDATE'){
+                                                }
                                               }
                                               return
 
@@ -2721,9 +2808,7 @@ class MapPageState extends State<MapPage> {
 
                                                             ),
                                                             layers: [
-
                                                               showSattelite ?  TileLayerOptions(
-
                                                                 //urlTemplate: 'https://{s}.tiles.mapbox.com/v3/pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdnB2dDAwdGwzZnMwc2lhcTlxd3QifQ.61hONdUooWn7aBJs-Km8OA/{z}/{x}/{y}.png',
                                                                 // urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                                                                 //urlTemplate:'https://api.mapbox.com/styles/v1/rezand/{z}/{x}/{y}.png?access_token=pk.eyJ1IjoicmV6YW5kIiwiYSI6ImNrNWNkdHg3djAwdDAzZnMwcTc1N2ZpY2YifQ.fl5LG72G5Uz6CLVfhbazNw',
@@ -2740,7 +2825,6 @@ class MapPageState extends State<MapPage> {
                                                                   'c',
                                                                   'd'
                                                                 ],
-
                                                               ) :
                                                               TileLayerOptions(
                                                                 //urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -2804,7 +2888,7 @@ class MapPageState extends State<MapPage> {
                                                                   child: Image
                                                                       .asset(
                                                                     'assets/images/sattelite.png',
-                                                                    color: showAllItemsOnMap ? Colors
+                                                                    color: !showSattelite ? Colors
                                                                         .white : Colors.amber,),),
                                                                 elevation: 0.0,
                                                                 backgroundColor: Colors
@@ -3059,7 +3143,7 @@ class MapPageState extends State<MapPage> {
                                       return GestureDetector(
                                         onTap: () {
                                           navigateToCarSelected(
-                                              index, false, 0);
+                                              index, false, 0,true);
                                         },
                                         child:
                                         Container(

@@ -75,6 +75,10 @@ class MessageHistoryFormState extends State<MessageHistoryForm> {
               if (snapshot.hasData &&
                   snapshot.data != null) {
                 carActionLogs = snapshot.data;
+                carActionLogs.removeWhere((a)=>a.ActionId==60);
+                if(carActionLogs==null || carActionLogs.length==0){
+                  return NoDataWidget(noCarCount: false,);
+                }
                 return  new Card(
                     margin: new EdgeInsets.only(
                         left: 5.0, right: 5.0, top: 80.0, bottom: 5.0),

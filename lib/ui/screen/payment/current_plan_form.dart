@@ -165,42 +165,7 @@ class CurrentPlanFormState extends MainPage<CurrentPlanForm>
   }
 
 
-  List<Widget> getInvoiceDetailsTiles(BuildContext context, InvoiceModel invoiceModel) {
-    List<Widget> list = [];
-    if (invoices != null &&
-    invoiceModel.invoiceDetailModel!=null &&
-    invoiceModel.invoiceDetailModel.length>0) {
-      for (InvoiceDetailModel i in invoiceModel.invoiceDetailModel) {
-        String startDate = invoiceModel.StartDate!=null ? invoiceModel.StartDate : '';
-        String desc =invoiceModel.Description!=null ?  invoiceModel.Description : '';
-        String endDate = invoiceModel.EndDate!=null ? invoiceModel.EndDate : '';
-        String invoiceDate = invoiceModel.InvoiceDate!=null ? invoiceModel.InvoiceDate : '';
-        String remainAmount = '';
-        String remainCount = '';
-        bool isActive=startDate!='';
-        remainAmount = i.RemainAmount!=null ? i.RemainAmount.toString() : '' ;
-        remainCount =i.RemainCount!=null ? i.RemainCount.toString() : '';
-        double amount = invoiceModel.Amount;
-        amount=amount!=null ? amount : 0;
 
-        list.add(ListTile(
-          leading: IconButton(icon:Icon( Icons.details,color: Colors.blueAccent,),onPressed: (){},iconSize: 15.0,),
-          title: Text(invoiceDate + " - " + startDate + ' - ' + endDate +' '+ Translations.current.planStatus()+' : '+ (!isActive ?
-          Translations.current.deactive() :
-          Translations.current.active() ) ),
-          subtitle: Text(
-              amount.toString() + ' # ' + remainAmount + " | " + remainCount +
-                  ' # ' + Translations.current.description() + ' : ' + desc),
-          trailing: Container(width: 0.0,height: 0.0,)
-        ));
-      }
-    }
-    else
-      {
-        list.add(new Text(Translations.current.noDatatoShow()));
-      }
-    return list;
-  }
 
 
 
@@ -213,6 +178,7 @@ class CurrentPlanFormState extends MainPage<CurrentPlanForm>
   _showBottomSheetPlans(BuildContext cntext, List<PlanModel> plns)
   {
     showModalBottomSheetCustom(context: cntext ,
+        mHeight: 0.90,
         builder: (BuildContext context) {
           return CurrentPlansForm(
             notyGetCurrentPlan: _notygetCurrentPlans ,
@@ -232,36 +198,13 @@ class CurrentPlanFormState extends MainPage<CurrentPlanForm>
   }
 
 
-  _showBottomSheetPlanDetails(BuildContext cntext, InvoiceModel inv)
-  {
-    showModalBottomSheetCustom(context: cntext ,
-        mHeight: 0.80,
-        builder: (BuildContext context) {
-          return Container(
-            height: 350.0,
-            child:
-            Column(
-            children: getInvoiceDetailsTiles(context, inv),
-            ),
-          );
 
-        });
-  }
   Widget _mainListBuilder(BuildContext context, int index,List<InvoiceModel> planModel) {
      return Column(
        crossAxisAlignment: CrossAxisAlignment.start,
        children: <Widget>[
          Card1(invoices:invoices,invoiceModel: invoices[index],),
-         Padding(
-           padding: EdgeInsets.only(top: 10.0),
-         child:
-             FlatButton(
-    onPressed: (){
-      _showBottomSheetPlanDetails(context,invoices[index]);
-    },
-    child:
-            Button(clr: Colors.blueAccent,title: 'جزییات',wid: 100.0,),),
-         ),
+
        ],
      ) ;
        /*ExpansionTile(
@@ -704,14 +647,17 @@ class Card1 extends StatelessWidget {
 
   Widget remainDayProgress(double progressValue,int diffDays) {
 
+    int dfd=diffDays;
+    if(dfd==null)
+      dfd=0;
     var progress = Container(
        width:80.0,
        height:80.0,
     child:
         Stack(
           children: <Widget>[
-           diffDays!=null && diffDays >0 ? Center(
-              child: Text(Translations.current.remaind()+'\n'+diffDays.toString(),textAlign: TextAlign.center,style: TextStyle(fontSize: 10.0),)
+            dfd!=null  ? Center(
+              child: Text(Translations.current.remaind()+'\n'+dfd.toString(),textAlign: TextAlign.center,style: TextStyle(fontSize: 10.0),)
             ) :
                Container(),
        ProgressCard(
@@ -730,16 +676,26 @@ class Card1 extends StatelessWidget {
 
   Widget remainAmountProgress(double progressValue) {
 
+    double result=progressValue;
+    if(result==null)
+      result=0.0;
     var progress = Container(
       width:80.0,
       height:80.0,
-      child:
+      child:  Stack(
+          children: <Widget>[
+            result!=null  ? Center(
+      child: Text('مانده مبلغ'+'\n'+centerRepository.toRials( result),textAlign: TextAlign.center,style: TextStyle(fontSize: 10.0),)
+    ) :
+    Container(),
       ProgressCard(
         forRemain: true,
         width: 80.0,
         isOn: false,
         isOff: false,
-        progress: progressValue,
+        progress: result,
+      ),
+    ],
       ),
     );
 
@@ -751,6 +707,11 @@ class Card1 extends StatelessWidget {
   Widget build(BuildContext context) {
     isActive=(invoiceModel.StartDate!=null &&
         invoiceModel.StartDate!='');
+    double height=430;
+    if(invoiceModel.InvoiceStatusConstId!=InvoiceModel.InvoiceStatusConstId_Not_Paid &&
+    isActive){
+      height=320;
+    }
     bool isDurational=false;
     bool isBoth=false;
     if(centerRepository.getPlans()!=null){
@@ -762,7 +723,7 @@ class Card1 extends StatelessWidget {
       }
     }
     return new Padding(
-      padding: EdgeInsets.only(top: 10.0,bottom: 10.0),
+      padding: EdgeInsets.only(top: 10.0,bottom: 1.0),
       child: new Stack(
         //overflow: Overflow.visible,
         children: <Widget>[
@@ -797,7 +758,7 @@ class Card1 extends StatelessWidget {
                                               border: Border.all(color: Colors.indigoAccent.withOpacity(0.0),width: .5)
                                             ),
                                             constraints: new BoxConstraints.expand(
-                                              height: 400.0,
+                                             height: height,
                                               width: MediaQuery.of(context).size.width*0.95,
                                             ),
                                             child: new Padding(
@@ -806,6 +767,25 @@ class Card1 extends StatelessWidget {
                                             new Column(
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: <Widget>[
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment.start ,
+                                                    children: <Widget>[
+                                                      new Text(invoiceModel.planModel!=null ? DartHelper.isNullOrEmptyString(invoiceModel.planModel.PlanCode) : '',
+                                                          style: new TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 18.0,
+                                                          )),
+                                                      new Padding(
+                                                        padding: EdgeInsets.only(right: 10.0,left: 10.0),
+                                                        child:
+                                                      new Text( (invoiceModel.planModel!=null ? DartHelper.isNullOrEmptyString( invoiceModel.planModel.PlanTitle) : ''),
+                                                          style: new TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 18.0,
+                                                          )
+                                                      ),),
+                                                    ],
+                                                  ),
                                                   Row(
                                             mainAxisAlignment: MainAxisAlignment.center ,
                                             children: <Widget>[
@@ -822,7 +802,7 @@ class Card1 extends StatelessWidget {
                                                 mainAxisAlignment: MainAxisAlignment.spaceBetween ,
 
                                                 children: <Widget>[
-                                                  new Text(Translations.current.invoiceDate(),style: new TextStyle(
+                                                  new Text('اعتبار تا :',style: new TextStyle(
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 18.0,
                                                   )),
@@ -836,22 +816,7 @@ class Card1 extends StatelessWidget {
                                                   ),
                                                   ],
                                               ),
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween ,
 
-                                                children: <Widget>[
-                                                  new Text(Translations.current.description(),style: new TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 18.0,
-                                            )),
-                                                    new Text( DartHelper.isNullOrEmptyString(invoiceModel.Description),
-                                                      style: new TextStyle(
-                                                        fontWeight: FontWeight.bold,
-                                                        fontSize: 16.0,
-                                                      )
-                                                  ),
-                                                  ],
-                                              ),
                                               Row(
                                                 mainAxisAlignment: MainAxisAlignment.spaceBetween ,
 
@@ -860,7 +825,7 @@ class Card1 extends StatelessWidget {
                                               fontWeight: FontWeight.bold,
                                               fontSize: 18.0,
                                             )),
-                                                     new Text( DartHelper.isNullOrEmptyString(invoiceModel.Amount.toString()),
+                                                     new Text( DartHelper.isNullOrEmptyString( centerRepository.toRials( invoiceModel.Amount!=null ? invoiceModel.Amount : 0.0)),
                                                       softWrap: true,
                                                       overflow: TextOverflow.fade,
                                                       style: new TextStyle(color: Colors.pink[200],
@@ -871,23 +836,22 @@ class Card1 extends StatelessWidget {
                                                   ),
                                                   ],
                                               ),
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween ,
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween ,
 
-                                                children: <Widget>[
-                                                  new Text(Translations.current.planTitle(),
-                                                style: new TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 18.0,
-                                                )),
-                                                     new Text( (invoiceModel.planModel!=null ? DartHelper.isNullOrEmptyString( invoiceModel.planModel.PlanTitle) : ''),
-                                                      style: new TextStyle(
+                                                    children: <Widget>[
+                                                      new Text(Translations.current.description(),style: new TextStyle(
                                                         fontWeight: FontWeight.bold,
                                                         fontSize: 18.0,
-                                                      )
+                                                      )),
+                                                      new Text( DartHelper.isNullOrEmptyString(invoiceModel.Description),
+                                                          style: new TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                            fontSize: 16.0,
+                                                          )
+                                                      ),
+                                                    ],
                                                   ),
-                                                  ],
-                                              ),
 
                                                   Row(
                                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -904,7 +868,7 @@ class Card1 extends StatelessWidget {
                                                    padding: EdgeInsets.only(top: 5.0,bottom: 1.0),
                                                    child:
                                                   new Row(
-                                                    mainAxisAlignment: MainAxisAlignment.end,
+                                                    mainAxisAlignment: MainAxisAlignment.center,
                                                     children: <Widget>[
                                                     /*!isActive ?  Text(Translations.current.activatePlan(),style: TextStyle(color: Colors.pinkAccent),) :
                                                     Text(Translations.current.planIsActive() ,style: TextStyle(color: Colors.green),),
@@ -914,8 +878,9 @@ class Card1 extends StatelessWidget {
                                                         color: Colors.indigoAccent.value,
                                                         wid: 100,),*/
                                               !isActive ?   FlatButton(
-                                                        padding: EdgeInsets.only(left: 0, right: 0),
-                                                        child:  Button(wid: 100.0, title: Translations.current.activatePlan(),clr: Colors.indigoAccent) ,
+                                                        padding: EdgeInsets.only(left: 10, right: 10),
+                                                        child:  Button(wid: MediaQuery.of(context).size.width*0.80,
+                                                            title: Translations.current.activatePlan(),clr: Colors.indigoAccent) ,
 
                                                         onPressed: () {
                                                           activateInvoice(context, invoiceModel);
@@ -927,10 +892,10 @@ class Card1 extends StatelessWidget {
                                                  ),
                                              invoiceModel.InvoiceStatusConstId==InvoiceModel.InvoiceStatusConstId_Not_Paid ?
                                              new Row(
-                                               mainAxisAlignment: MainAxisAlignment.end,
+                                               mainAxisAlignment: MainAxisAlignment.center,
                                                children: <Widget>[
                                              FlatButton(
-                                                padding: EdgeInsets.only(left: 0, right: 0),
+                                                padding: EdgeInsets.only(left: 10, right: 10),
                                                 onPressed: (){
                                                       _buyCurrentPlanSelected(invoiceModel.UserId, invoiceModel.PlanId, invoiceModel.Amount);
                                                 },
@@ -938,8 +903,18 @@ class Card1 extends StatelessWidget {
                                                   Button(
                                                     title: Translations.current.payPlan(),
                                                     clr: Colors.lightGreen,
-                                                    wid: 100,),) ],) :
+                                                    wid: MediaQuery.of(context).size.width*0.80,),) ],) :
                                                  Container(),
+                                                  Padding(
+                                                    padding: EdgeInsets.only(top: 1.0),
+                                                    child:
+                                                    FlatButton(
+                                                      onPressed: (){
+                                                        _showBottomSheetPlanDetails(context,invoiceModel);
+                                                      },
+                                                      child:
+                                                      Button(clr: Colors.blueAccent.withOpacity(0.6),title: 'جزییات',wid: 100.0,),),
+                                                  ),
                                                 ],
                                             ),
                                             ),
@@ -952,7 +927,58 @@ class Card1 extends StatelessWidget {
     );
   }
 
+  _showBottomSheetPlanDetails(BuildContext cntext, InvoiceModel inv)
+  {
+    showModalBottomSheetCustom(context: cntext ,
+        mHeight: 0.80,
+        builder: (BuildContext context) {
+          return Container(
+            height: 350.0,
+            child:
+            Column(
+              children: getInvoiceDetailsTiles(context, inv),
+            ),
+          );
 
+        });
+  }
+
+  List<Widget> getInvoiceDetailsTiles(BuildContext context, InvoiceModel invoiceModel) {
+    List<Widget> list = [];
+    if (invoices != null &&
+        invoiceModel.invoiceDetailModel!=null &&
+        invoiceModel.invoiceDetailModel.length>0) {
+      for (InvoiceDetailModel i in invoiceModel.invoiceDetailModel) {
+        String startDate = invoiceModel.StartDate!=null ? invoiceModel.StartDate : '';
+        String desc =invoiceModel.Description!=null ?  invoiceModel.Description : '';
+        String endDate = invoiceModel.EndDate!=null ? invoiceModel.EndDate : '';
+        String invoiceDate = invoiceModel.InvoiceDate!=null ? invoiceModel.InvoiceDate : '';
+        String remainAmount = '';
+        String remainCount = '';
+        bool isActive=startDate!='';
+        remainAmount = i.RemainAmount!=null ? i.RemainAmount.toString() : '' ;
+        remainCount =i.RemainCount!=null ? i.RemainCount.toString() : '';
+        double amount = invoiceModel.Amount;
+        amount=amount!=null ? amount : 0;
+
+        list.add(ListTile(
+            leading: IconButton(icon:Icon( Icons.details,color: Colors.blueAccent,),onPressed: (){},iconSize: 15.0,),
+            title: Text(invoiceDate + " - " + startDate + ' - ' + endDate +' '+ Translations.current.planStatus()+' : '+ (!isActive ?
+            Translations.current.deactive() :
+            Translations.current.active() ) ),
+            subtitle: Text(
+                amount.toString() + ' # ' + remainAmount + " | " + remainCount +
+                    ' # ' + Translations.current.description() + ' : ' + desc),
+            trailing: Container(width: 0.0,height: 0.0,)
+        ));
+      }
+    }
+    else
+    {
+      list.add(new Text(Translations.current.noDatatoShow()));
+    }
+    return list;
+  }
   _showBottomSheetPlans(BuildContext cntext, List<PlanModel> plns)
     {
     showModalBottomSheetCustom(context: cntext ,
@@ -1062,7 +1088,7 @@ class CurrentPlansForm extends StatelessWidget {
         new Container(
           margin: EdgeInsets.only(top: 10.0,right: 5.0,left: 5.0),
           constraints: new BoxConstraints.expand(
-            height: 120.0,
+            height: 180.0,
             width: MediaQuery.of(context).size.width*0.95,
           ),
           decoration: BoxDecoration(
@@ -1086,7 +1112,6 @@ class CurrentPlansForm extends StatelessWidget {
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween ,
-
                   children: <Widget>[
                     new Text(' '+Translations.current.planCode()+' : '),
                         new Text(DartHelper.isNullOrEmptyString(plnModel.PlanCode+' '),
@@ -1096,7 +1121,6 @@ class CurrentPlansForm extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                           fontSize: 20.0,
                         )
-
                     ),
                   ],
                 ),
@@ -1139,7 +1163,7 @@ class CurrentPlansForm extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   fontSize: 18.0,
                 )),
-                  new Text( DartHelper.isNullOrEmptyString(plnModel.Cost.toString()+ ' '),
+                  new Text( DartHelper.isNullOrEmptyString(centerRepository.toRials(plnModel.Cost!=null ? plnModel.Cost : 0.0)+ ' '),
                     style: new TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 18.0,
@@ -1161,12 +1185,11 @@ class CurrentPlansForm extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       fontSize: 18.0,
                     )
-
                 ),
                 ],
           ),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                    /* new Text(' '+Translations.current.buyPlan(),
                         style: new TextStyle(
@@ -1185,7 +1208,7 @@ class CurrentPlansForm extends StatelessWidget {
                           color: Colors.greenAccent,
                           border: Border.all(color: Colors.greenAccent,width: 1.0),
                         ),
-                        width: 100.0,
+                        width: MediaQuery.of(context).size.width*0.90,
                         height: 36.0,
                         child:
                             Center(

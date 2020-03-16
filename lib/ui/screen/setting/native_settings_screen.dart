@@ -349,11 +349,11 @@ class SettingsScreenState extends State<SettingsScreen> {
       centerRepository.showFancyToast('اطلاعات با موفقیت ذخیره شد.');
     }
     else if(type==PERIODIC_TIME_TAG){
-      prefRepository.setMinMaxSpeed(PERIODIC_TIME_TAG, int.tryParse( resultValue));
+      prefRepository.setPeriodicTime(PERIODIC_TIME_TAG, int.tryParse( resultValue));
       centerRepository.showFancyToast('اطلاعات با موفقیت ذخیره شد.');
 
     }else if(type==PERIODIC_UPDTAE_TIME_TAG){
-      prefRepository.setMinMaxSpeed(PERIODIC_UPDTAE_TIME_TAG, int.tryParse( resultValue));
+      prefRepository.setPeriodicUpdate(PERIODIC_UPDTAE_TIME_TAG, int.tryParse( resultValue));
       centerRepository.showFancyToast('اطلاعات با موفقیت ذخیره شد.');
     }
 
@@ -882,14 +882,14 @@ class SettingsScreenState extends State<SettingsScreen> {
                       builder: (BuildContext context) => LanguagesScreen()));*/
                 },
               ),
-             /* SettingsTile(
+              SettingsTile(
                 title: 'زمان دریافت اطلاعات خودرو',
                 subtitle: 'تنظیمات اطلاعات دریافت',
                 leading: Icon(Icons.update),
                 onTap: () {
                   _showDefaultSettingsSheet(context, PERIODIC_TIME_TAG);
                 },
-              ),*/
+              ),
              /* SettingsTile(
                 title: 'زمان دریافت وضعیت خودرو',
                 subtitle: 'تنظیمات وضعیت خودرو',

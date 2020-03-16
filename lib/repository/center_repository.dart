@@ -58,7 +58,9 @@ import 'package:anad_magicar/ui/screen/home/index.dart';
 import 'package:anad_magicar/ui/screen/setting/native_settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_money_formatter/flutter_money_formatter.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:intl/intl.dart';
 import 'package:local_auth/auth_strings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:anad_magicar/model/viewmodel/car_state.dart' as mat;
@@ -266,6 +268,29 @@ class CenterRepository{
         userId: userId,
         isSelf: true,
         carAddNoty: valueNotyModelBloc));
+  }
+
+  String toRials(double amount) {
+   String format= NumberFormat.simpleCurrency(locale: 'fa',name: 'ریال',decimalDigits: 0).format(amount);
+        return format;
+  }
+   String convertToMoney(double amountt) {
+    if(amountt!=null) {
+      FlutterMoneyFormatter fmf = FlutterMoneyFormatter(
+        settings: MoneyFormatterSettings(
+            symbol: 'ریال',
+            thousandSeparator: '.',
+            decimalSeparator: ',',
+            symbolAndNumberSeparator: ' ',
+            fractionDigits: 3,
+            compactFormatType: CompactFormatType.short
+        ),
+          amount: 3000000.0
+      );
+      return fmf.output.withoutFractionDigits;
+    }
+    else
+       return '0';
   }
 
   static int onNavButtonTap(BuildContext context, int index,{int carId}) {

@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:anad_magicar/widgets/slidable_list/flutter_slidable.dart';
 import 'package:anad_magicar/utils/dart_helper.dart';
 import 'package:anad_magicar/widgets/animated_dialog_box.dart';
+import 'package:flutter_money_formatter/flutter_money_formatter.dart';
 
 class ServiceItemSlideable extends StatefulWidget {
   ApiService serviceItem;
@@ -302,6 +303,13 @@ class HorizontalListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     bool isDone=item.ServiceStatusConstId==Constants.SERVICE_DONE;
+    String typeTitle=item.serviceType.ServiceTypeConstId==Constants.SERVICE_TYPE_DURATIONALITY ? 'دروه ای' :
+    item.serviceType.ServiceTypeConstId==Constants.SERVICE_TYPE_FUNCTIONALITY ? 'کارکردی' : 'کارکردی/دوره ای';
+    String durationTitle=item.serviceType.DurationTypeConstId==Constants.SERVICE_DURATION_DAY ? 'روزانه' :
+    item.serviceType.DurationTypeConstId==Constants.SERVICE_DURATION_MONTH ? 'ماهه' : 'سالیانه';
+    String distanceTitle='کیلومتر';
+    String befordays=' روز قبل ';
+    String beforeDistance=' کیلومتر قبل ';
     String dateTitle=Translations.current.serviceDate();
     if(isDone){
       dateTitle=Translations.current.serviceDoneDate();
@@ -342,50 +350,124 @@ class HorizontalListItem extends StatelessWidget {
         coutnvalue=item.serviceType.DurationCountValue;
         count= coutnvalue-distance;
     }
-    return new Padding(
-      padding: EdgeInsets.only(bottom: 5.0),
-    child:
+
+    String amount='';
+   amount=centerRepository.toRials(item.ServiceCost!=null ? item.ServiceCost : 0.0);
+    return Column(
+      //mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        //mainAxisSize: MainAxisSize.max,
+        children: <Widget>[
+          new Padding(
+      padding: EdgeInsets.only(top: 5.0,left: 5.0,right: 5.0,bottom: 5.0),
+      child: Card(
+      elevation: 0.0,
+      child: Container(
+      decoration: BoxDecoration(
+      //color: Colors.white30,
+      borderRadius: BorderRadius.all(Radius.circular(5.0)),
+      ),
+      child:
       Container(
-      alignment: Alignment.centerLeft,
+      //alignment: Alignment.topRight,
       color: Theme.of(context).cardTheme.color,
       width: MediaQuery.of(context).size.width-10,
-      height: 160.0,
-      child: Column(
+      height: 180.0,
+      child:
+      Row(
         mainAxisAlignment: MainAxisAlignment.start,
-       //mainAxisSize: MainAxisSize.max,
         children: <Widget>[
+           Padding(
+              padding: EdgeInsets.only(left: 1.0,right: 1.0),
+              child:
+                  // Text(DartHelper.isNullOrEmptyString(serviceTypeTitle),style: TextStyle(fontSize: 16.0,fontWeight: FontWeight.bold)),
+                  Container(
+                    width: 20.0,
+                    //height: 50.0,
+                    decoration: BoxDecoration(
+                      color: item.ServiceStatusConstId==Constants.SERVICE_DONE ? Colors.greenAccent :
+                      item.ServiceStatusConstId==Constants.SERVICE_NOTDONE ? Colors.pinkAccent :
+                      item.ServiceStatusConstId==Constants.SERVICE_CANCEL ? Colors.blueAccent :
+                      item.ServiceStatusConstId==Constants.SERVICE_NEAR ? Colors.amberAccent :
+                      Colors.white,
+                    ),
 
-          Expanded(
-            child: Padding(
-          padding: EdgeInsets.only(left: 10.0,right: 10.0),
-      child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: <Widget>[
-              Text(DartHelper.isNullOrEmptyString(serviceTypeTitle),style: TextStyle(fontSize: 15.0)),
-      Container(
-        width: 90.0,
-      height: 50.0,
-      decoration: BoxDecoration(
-        color: item.ServiceStatusConstId==Constants.SERVICE_DONE ? Colors.greenAccent :
-        item.ServiceStatusConstId==Constants.SERVICE_NOTDONE ? Colors.pinkAccent :
-        item.ServiceStatusConstId==Constants.SERVICE_CANCEL ? Colors.blueAccent :
-        item.ServiceStatusConstId==Constants.SERVICE_NEAR ? Colors.amberAccent :
-        Colors.white,
-      ),
+                    /*Text(DartHelper.isNullOrEmptyString( item.serviceType.ServiceTypeTitle),
+                        overflow: TextOverflow.fade,softWrap: true,textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 10.0,color: item.ServiceStatusConstId==Constants.SERVICE_NOTDONE ? Colors.white : Colors.white)),*/
+                    //foregroundColor: Colors.white,
+                  ),
 
-        child: Text(DartHelper.isNullOrEmptyString( item.serviceType.ServiceTypeTitle),
-            overflow: TextOverflow.fade,softWrap: true,textAlign: TextAlign.center,
-             style: TextStyle(fontSize: 10.0,color: item.ServiceStatusConstId==Constants.SERVICE_NOTDONE ? Colors.white : Colors.white)),
-        //foregroundColor: Colors.white,
-      ),
+
+          ),
+      Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: <Widget>[
+        Padding(
+    padding: EdgeInsets.only(left: 10.0,right: 10.0),
+    child:
+    Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: <Widget>[
+    Text(DartHelper.isNullOrEmptyString( item.serviceType.ServiceTypeTitle),
+          overflow: TextOverflow.fade,softWrap: true,textAlign: TextAlign.left,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18.0,color: item.ServiceStatusConstId==Constants.SERVICE_NOTDONE ? Colors.black : Colors.green)),
+
       ],
     ),
-          ),
-          ),
-         isDone ? Container() :
-         Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(left: 10.0,right: 10.0),
+    ),
+
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: <Widget>[
+                  Text(DartHelper.isNullOrEmptyString( typeTitle),
+                      overflow: TextOverflow.fade,softWrap: true,textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 18.0,color: item.ServiceStatusConstId==Constants.SERVICE_NOTDONE ? Colors.black : Colors.green)),
+
+                ],
+              ),
+
+              Container(
+                width: MediaQuery.of(context).size.width*0.80,
+              child:
+    Padding(
+    padding: EdgeInsets.only(left: 0.0,right: 10.0),
+    child:
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+               Text(Translations.current.serviceDate(),style: TextStyle(fontSize: 15.0)),
+             Text(DartHelper.isNullOrEmptyString( item.ServiceDate), style: TextStyle(fontSize: 15.0),),
+                ],
+              ),),
+              ),
+
+          isDone ?  Container(
+              width: MediaQuery.of(context).size.width*0.80,
+              child:
+          Padding(
+              padding: EdgeInsets.only(left: 0.0,right: 10.0),
+              child:
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+              Padding(
+              padding: EdgeInsets.only(left: 0.0,right: 0.0),
+              child:   Text(dateTitle,style: TextStyle(fontSize: 15.0)),),
+              Padding(
+                padding: EdgeInsets.only(left: 0.0,right: 0.0),
+                child:  Text(DartHelper.isNullOrEmptyString(item.ActionDate ),style: TextStyle(fontSize: 15.0),),),
+                ],
+              ),
+            ) ,)
+           : Container(),
+        isDone ? Container() :
+        Container(
+          width: MediaQuery.of(context).size.width*0.80,
+          child: Padding(
+              padding: EdgeInsets.only(left: 0.0,right: 10.0),
               child:
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -394,54 +476,80 @@ class HorizontalListItem extends StatelessWidget {
                   Text(DartHelper.isNullOrEmptyString(count.toString()),style: TextStyle(fontSize: 15.0),),
                 ],
               ),
-            ),
-          ),
+            ),),
 
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(left: 10.0,right: 10.0),
-          child:
-            Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: <Widget>[
-                  Text(dateTitle,style: TextStyle(fontSize: 15.0)),
-                  Text(DartHelper.isNullOrEmptyString(isDone ? item.ActionDate :  item.ServiceDate),style: TextStyle(fontSize: 15.0),),
-                  ],
-            ),
-            ),
-          ),
-       isDone ?   Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(left: 10.0,right: 10.0),
+
+
+       isDone ?  Container(
+         width: MediaQuery.of(context).size.width*0.80,
+         child: Padding(
+              padding: EdgeInsets.only(left: 0.0,right: 10.0),
               child:
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: <Widget>[
-                  Text(Translations.current.description(),style: TextStyle(fontSize: 15.0)),
+                  //Text(Translations.current.description(),style: TextStyle(fontSize: 15.0)),
                   Text(DartHelper.isNullOrEmptyString(  item.Description),style: TextStyle(fontSize: 15.0),),
                 ],
               ),
-            ),
-          ) :
+            ) ,) :
            Container(),
-          isDone ?   Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(left: 10.0,right: 10.0),
+          isDone ?
+          Container(
+            width: MediaQuery.of(context).size.width*0.80,
+            child:  Padding(
+              padding: EdgeInsets.only(left: 0.0,right: 10.0),
               child:
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Text(Translations.current.serviceCost(),style: TextStyle(fontSize: 15.0)),
-                  Text(DartHelper.isNullOrEmptyString(  item.ServiceCost.toString()),style: TextStyle(fontSize: 15.0),),
+              Padding(
+              padding: EdgeInsets.only(left: 0.0,right: 0.0),
+               child: Text(Translations.current.serviceCost(),style: TextStyle(fontSize: 15.0)),),
+      Padding(
+        padding: EdgeInsets.only(left: 0.0,right: 0.0),
+        child: Text(DartHelper.isNullOrEmptyString( amount),style: TextStyle(fontSize: 15.0),),),
                 ],
               ),
-            ),
-          ) :
+            ),)
+           :
           Container(),
-
+         !isDurational ? Container(
+             width: MediaQuery.of(context).size.width*0.80,
+             child: Padding(
+              padding: EdgeInsets.only(left: 0.0,right: 10.0),
+              child:
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: <Widget>[
+                  Text('کارکرد',style: TextStyle(fontSize: 15.0)),
+                  Text(DartHelper.isNullOrEmptyString(  item.AlarmCount.toString()),style: TextStyle(fontSize: 15.0),),
+                ],
+              ),
+            ), ) : Container()
+         /*Expanded(
+           child: Padding(
+             padding: EdgeInsets.only(left: 10.0,right: 10.0),
+             child:
+             Row(
+               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+               children: <Widget>[
+                 Text('دوره زمانی',style: TextStyle(fontSize: 15.0)),
+                 //Text(DartHelper.isNullOrEmptyString(  item..toString()),style: TextStyle(fontSize: 15.0),),
+               ],
+             ),
+           ),
+         )*/,
         ],
       ),
+        ],
       ),
+
+    ),
+      ),
+      ),
+        ),
+      ],
     );
   }
 }

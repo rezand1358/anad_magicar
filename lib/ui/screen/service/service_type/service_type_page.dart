@@ -5,6 +5,7 @@ import 'package:anad_magicar/data/rest_ds.dart';
 import 'package:anad_magicar/model/apis/api_service.dart';
 import 'package:anad_magicar/model/apis/service_type.dart';
 import 'package:anad_magicar/model/change_event.dart';
+import 'package:anad_magicar/model/viewmodel/reg_service_type_vm.dart';
 import 'package:anad_magicar/repository/center_repository.dart';
 import 'package:anad_magicar/translation_strings.dart';
 import 'package:anad_magicar/ui/screen/base/main_page.dart';
@@ -118,7 +119,7 @@ class ServiceTypePageState extends MainPage<ServiceTypePage> {
   }
 
   addServiceType() async {
-    Navigator.pushNamed(context, RegisterServicePageTypeState.route,arguments: widget.carId);
+    Navigator.pushNamed(context, RegisterServicePageTypeState.route,arguments: new RegServiceTypeVM(carId: widget.carId, route: route));
   }
 
   @override
